@@ -2,15 +2,15 @@ package main
 
 import (
 	"bytes"
-	"sync"
 	"encoding/binary"
 	"encoding/json"
-	"io"
-	log "github.com/sirupsen/logrus"
+	"flag"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
+	log "github.com/sirupsen/logrus"
+	"io"
 	"net"
 	"os"
-	"flag"
+	"sync"
 	"text/template"
 	"time"
 )
@@ -33,12 +33,12 @@ const (
 )
 
 var (
-	mqtt MQTT.Client
-	listenAddr string
-	mqttServer string
-	clientID string
-	topic string
-	timerMap sync.Map
+	mqtt          MQTT.Client
+	listenAddr    string
+	mqttServer    string
+	clientID      string
+	topic         string
+	timerMap      sync.Map
 	timerDuration time.Duration
 )
 
@@ -48,7 +48,7 @@ func init() {
 	flag.StringVar(&mqttServer, "server", "", "Full URL of the MQTT server")
 	flag.StringVar(&clientID, "clientid", hostname, "ClientID for MQTT connection")
 	flag.StringVar(&topic, "topic", "feye/{{ .SerialID }}/{{ .Channel }}", "Topic to publish to")
-	flag.DurationVar(&timerDuration, "recover", 10 * time.Second, "Recover time for Stop event")
+	flag.DurationVar(&timerDuration, "recover", 10*time.Second, "Recover time for Stop event")
 	debug := flag.Bool("debug", false, "")
 	flag.Parse()
 
@@ -63,12 +63,12 @@ func setupMQTT() error {
 	opts.SetClientID(clientID)
 	opts.SetCleanSession(true)
 	/*
-	if username != "" {
-		opts.SetUsername(username)
-		if password != "" {
-			opts.SetPassword(password)
+		if username != "" {
+			opts.SetUsername(username)
+			if password != "" {
+				opts.SetPassword(password)
+			}
 		}
-	}
 	*/
 
 	mqtt = MQTT.NewClient(opts)
