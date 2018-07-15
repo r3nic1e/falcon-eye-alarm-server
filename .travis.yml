@@ -14,6 +14,7 @@ script:
   - gox -os="linux" -arch="amd64 arm arm64" -output="feye_alarm_server.{{.OS}}.{{.Arch}}" -verbose ./...
 deploy:
   provider: releases
+  skip_cleanup: true
   api_key:
     secure: Tv6mARuluTr+LMQgPEU2/Avqwn2rxwCH+/8uKOoB0eXrxI6/QYuwZS3ZlyzVWa6lpnzK1Jr2HREhNJ5aCuwZmyC9LesfDSFPLw5h/vO1JNqZX4zqZ15Sq3eYiurEhTmcMVwENoe8GSly71TNbzWS47Dk3ddHcP3F91QffjNNRyuZlroLOTnS30YdJX9+nwQcMQKNYI5/BYGb2v03Zr60CTizmfuA5t2QK21czt2oSxhpBGWtAdZdnBgu8c1jZPfgOQP4Nhj4WXVLBC2UpPUq4Ek5HptQ4qxuWxPoKjXTaxvqQU6ra2LXpYP2OjV9gNnaXRCJaK2opdUrJy5VZRP7GrHeAuJxCwBYw9djpW0Hv9XJnjutBd/hLBXXm7IGPh6yv4w6j2Akq3KB2yFZWvQGrn2dF1FkTZEHJh951rA9X9rrq2AJKGEUb/Eby4/aP8a/UH6kR9qrjCi5f0vAM6juSVRBgAHbsptXR4A/6Q24Qz+IieYIUvbBa0Tp8bVRSbDlimrXdS/hQ3kFRH9xtdoAY8kaz73gvN7Qnud5Ya1rbpcGzTQRxmnlnDtSCaacIuWr4s0jJhQJHK3VIoMyed0kHIFXzGwJ5Nx3CMzTCgOm1F8r5GmjVEuU21K9dVN60n8Qgc6PEuSpLQy0KSIeXFUWphcaat3DxRJESkIOh759ph4=
   file:
