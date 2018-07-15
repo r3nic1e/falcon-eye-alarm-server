@@ -2,6 +2,7 @@ language: go
 go:
   - "1.9.x"
   - "1.10.x"
+  - tip
 before_install:
   - go get github.com/mitchellh/gox
 install: []
@@ -9,8 +10,8 @@ script:
   - go get -t -v ./...
   - go vet $(go list ./... | grep -v /vendor/)
   - go test -v -race ./...
-  - gox -os="darwin windows" -arch="amd64" -output="feye_alarm_server.." -verbose ./...
-  - gox -os="linux" -arch="amd64 arm arm64" -output="feye_alarm_server.." -verbose ./...
+  - gox -os="darwin windows" -arch="amd64" -output="feye_alarm_server.{{.OS}}.{{.Arch}}" -verbose ./...
+  - gox -os="linux" -arch="amd64 arm arm64" -output="feye_alarm_server.{{.OS}}.{{.Arch}}" -verbose ./...
 deploy:
   provider: releases
   api_key:
@@ -23,5 +24,5 @@ deploy:
     - feye_alarm_server.linux.arm64
   on:
     repo: r3nic1e/falcon-eye-alarm-server
-    go: "1.10.x"
+    go: tip
     all_branches: true
