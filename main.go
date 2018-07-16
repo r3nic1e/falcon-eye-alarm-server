@@ -39,6 +39,7 @@ var (
 	clientID      string
 	topic         string
 	timerMap      sync.Map
+	cancelMap     sync.Map
 	timerDuration time.Duration
 )
 
@@ -117,27 +118,36 @@ func publishState(packet Packet) {
 			log.WithField("topic", top.String()).WithField("status", packet.Status).Debug("Published message to MQTT")
 		}
 	case STATUS_STOP:
-		if t, ok := timerMap.Load(top.String()); ok {
-			timer := t.(*time.Timer)
-			if !timer.Stop() {
-				<-timer.C
-			}
-			timer.Reset(timerDuration)
-		} else {
-			timer := time.NewTimer(timerDuration)
-			timerMap.Store(top.String(), timer)
-			go func(timer *time.Timer, mqtt MQTT.Client, topic string, status string) {
-				<-timer.C
-				token = mqtt.Publish(topic, 0, true, status)
-				token.Wait()
-				if token.Error() != nil {
-					log.Error(token.Error())
-				} else {
-					log.WithField("topic", topic).WithField("status", status).Debug("Published message to MQTT")
-				}
-			}(timer, mqtt, top.String(), packet.Status)
-
+		if c, ok := cancelMap.Load(top.String()); !ok {
+			c = make(chan bool)
+			cancelMap.Store(top.String(), c)
 		}
+		if t, ok := timerMap.Load(top.String()); ok {
+			c, _ := cancelMap.Load(top.String())
+			c.(chan bool) <- true
+			timer := t.(*time.Timer)
+			timer.Stop()
+		}
+
+		timer := time.NewTimer(timerDuration)
+		timerMap.Store(top.String(), timer)
+		go func(timer *time.Timer, mqtt MQTT.Client, topic string, status string) {
+			cancelChan, _ := cancelMap.Load(topic)
+			select {
+			case <-timer.C:
+			case <-cancelChan.(chan bool):
+				log.Debug("Recieved message to cancel waiting to send stop message")
+				return
+			}
+			token = mqtt.Publish(topic, 0, true, status)
+			token.Wait()
+			if token.Error() != nil {
+				log.Error(token.Error())
+			} else {
+				log.WithField("topic", topic).WithField("status", status).Debug("Published message to MQTT")
+			}
+			timerMap.Delete(topic)
+		}(timer, mqtt, top.String(), packet.Status)
 	}
 }
 
