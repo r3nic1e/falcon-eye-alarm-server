@@ -9,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net"
-	"os"
 	"sync"
 	"text/template"
 	"time"
@@ -34,43 +33,29 @@ const (
 
 var (
 	mqtt          MQTT.Client
-	listenAddr    string
-	mqttServer    string
-	clientID      string
-	topic         string
 	timerMap      sync.Map
 	cancelMap     sync.Map
 	timerDuration time.Duration
+	configFile string
 )
-
 func init() {
-	hostname, _ := os.Hostname()
-	flag.StringVar(&listenAddr, "listen", ":15002", "Listen address")
-	flag.StringVar(&mqttServer, "server", "", "Full URL of the MQTT server")
-	flag.StringVar(&clientID, "clientid", hostname, "ClientID for MQTT connection")
-	flag.StringVar(&topic, "topic", "feye/{{ .SerialID }}/{{ .Channel }}", "Topic to publish to")
-	flag.DurationVar(&timerDuration, "recover", 10*time.Second, "Recover time for Stop event")
-	debug := flag.Bool("debug", false, "")
+	flag.StringVar(&configFile, "config", "", "Config file path")
 	flag.Parse()
-
-	if *debug {
-		log.SetLevel(log.DebugLevel)
-	}
 }
 
-func setupMQTT() error {
+
+func setupMQTT(config Config) error {
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker(mqttServer)
-	opts.SetClientID(clientID)
+	opts.AddBroker(config.MQTT.URL)
+	opts.SetClientID(config.MQTT.ClientID)
 	opts.SetCleanSession(true)
-	/*
-		if username != "" {
-			opts.SetUsername(username)
-			if password != "" {
-				opts.SetPassword(password)
-			}
+
+	if config.MQTT.Username != "" {
+		opts.SetUsername(config.MQTT.Username)
+		if config.MQTT.Password != "" {
+			opts.SetPassword(config.MQTT.Password)
 		}
-	*/
+	}
 
 	mqtt = MQTT.NewClient(opts)
 	if token := mqtt.Connect(); token.Wait() && token.Error() != nil {
@@ -94,7 +79,7 @@ func ParsePacket(r io.Reader) (Packet, error) {
 	return packet, nil
 }
 
-func publishState(packet Packet) {
+func publishState(topic string, packet Packet) {
 	tmpl, err := template.New("topic").Parse(topic)
 	if err != nil {
 		log.Error(err)
@@ -151,7 +136,7 @@ func publishState(packet Packet) {
 	}
 }
 
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn, topic string) {
 	defer conn.Close()
 	log.Debug("New connection!")
 	packet, err := ParsePacket(conn)
@@ -160,17 +145,22 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
-	publishState(packet)
+	publishState(topic, packet)
 }
 
 func main() {
-	ln, err := net.Listen("tcp", listenAddr)
+	config := LoadConfig(configFile)
+	if config.Debug {
+		log.SetLevel(log.DebugLevel)
+	}
+
+	ln, err := net.Listen("tcp", config.ListenAddr)
 	if err != nil {
-		log.Fatal(err)
+		log.WithError(err).Fatal("Failed to listen port")
 		return
 	}
 
-	if err := setupMQTT(); err != nil {
+	if err := setupMQTT(config); err != nil {
 		log.Fatal(err)
 	}
 
@@ -180,6 +170,6 @@ func main() {
 			log.Error(err)
 			continue
 		}
-		go handleConnection(conn)
+		go handleConnection(conn, config.MQTT.Topic)
 	}
 }
