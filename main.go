@@ -149,15 +149,21 @@ func handleConnection(conn net.Conn, topic string) {
 }
 
 func main() {
+	var err error
+
 	config := LoadConfig(configFile)
 	if config.Debug {
 		log.SetLevel(log.DebugLevel)
 	}
 
+	timerDuration, err = time.ParseDuration(config.RecoverTime)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to parse recover time")
+	}
+
 	ln, err := net.Listen("tcp", config.ListenAddr)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to listen port")
-		return
 	}
 
 	if err := setupMQTT(config); err != nil {
